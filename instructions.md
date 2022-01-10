@@ -22,7 +22,7 @@ Core objectives:
 * Each of 4 Hero's attributes must be updatable (stored as a store variable). You can set the default value of the Power to 100 and all multipliers to 0.
 * Each of 5 Unit's attributes must be updatable (stored as a store variable).
 * Armies must be able to fight each other. Follow the [Combat](https://daniel-67.gitbook.io/omnichain-wars/core-game-mechanics/combat) page to learn more about the combat formulas. For now you can disregard the City Wall and Castle defense bonuses. Consider only the Capture attack mode for now. The loser army loses all the Units and the Hero.
-* Combat function should accept an id of one Army as an attacker and id of the other Army as a defender. Make sure to store the 
+* Combat function should accept an id of one Army as an attacker and id of the other Army as a defender. Make the function callable only if the msg.sender owns the Army that is attacking and check that the defending army exists.
 * Make a free external mint function that would mint a Hero, 10 Spearmen and 4 Hussars to a Player.
 
 
