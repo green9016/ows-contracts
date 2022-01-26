@@ -4,6 +4,7 @@
     "compile": "npx hardhat compile",
     "verify": "npx hardhat run scripts/verify.ts",
     "size": "npx hardhat size-contracts",
+    "test": "npx hardhat test",
     "lint": "eslint . --ext .js,.ts --ignore-path .eslintignore"
   },
   "devDependencies": {

@@ -2,7 +2,6 @@
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-//import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "./libraries/Base64.sol";
@@ -15,8 +14,8 @@ contract OmnichainWarsv0 is ERC1155 {
     uint256 public constant HUSSARS = 2;
     uint256 public constant HOLY_KNIGHTS = 3;
     uint256 public constant RAMS = 4;
-    uint256 public constant BABRONS = 5;
-    uint256 public constant HERO = 6;
+    uint256 public constant BARONS = 5;
+    uint256 public constant HERO = 0;
 
     struct UnitsAttributes {
         uint unitType;
@@ -40,7 +39,7 @@ contract OmnichainWarsv0 is ERC1155 {
     }
 
     event UnitsMinted(address sender, uint newItemId, uint unitType, uint supply, bytes metadata);
-    event HeroMinted(address sender, uint heroType, bytes metadata);
+    event HeroMinted(address sender, uint newItemId, uint heroType, bytes metadata);
 
     // The tokenId is the NFTs unique identifier, it's just a number that goes
     // 0, 1, 2, 3, etc.
@@ -48,7 +47,7 @@ contract OmnichainWarsv0 is ERC1155 {
     Counters.Counter private _tokenIds;
 
     UnitsAttributes[] public defaultUnits;
-    HeroAttributes[] public defaultHeroes;
+    HeroAttributes public defaultHeroes;
 
     mapping(uint256 => UnitsAttributes) public unitsHolderAttributes;
     mapping(uint256 => HeroAttributes) public heroHolderAttributes;
@@ -63,20 +62,16 @@ contract OmnichainWarsv0 is ERC1155 {
         uint[] memory unitsDefenseCavalry,
         uint[] memory unitsSpeed,
         uint[] memory unitsCarryingCapacity,
-        uint[] memory heroPower,
-        uint[] memory heroOffensiveMultiplier,
-        uint[] memory heroDefensiveMultiplier,
-        uint[] memory heroResourceProduction
+        uint heroPower,
+        uint heroOffensiveMultiplier,
+        uint heroDefensiveMultiplier,
+        uint heroResourceProduction
     ) ERC1155("") {
         require(unitsNames.length == unitsImageURIs.length);
         require(unitsAttackPoint.length == unitsDefenseInfantry.length);
         require(unitsAttackPoint.length == unitsDefenseCavalry.length);
         require(unitsAttackPoint.length == unitsSpeed.length);
         require(unitsAttackPoint.length == unitsCarryingCapacity.length);
-
-        require(heroPower.length == heroOffensiveMultiplier.length);
-        require(heroPower.length == heroDefensiveMultiplier.length);
-        require(heroPower.length == heroResourceProduction.length);
 
         for(uint i = 0; i < unitsAttackPoint.length; i += 1) {
             defaultUnits.push(UnitsAttributes({
@@ -91,17 +86,15 @@ contract OmnichainWarsv0 is ERC1155 {
             }));
         }
 
-        for(uint i = 0; i < heroPower.length; i += 1) {
-            defaultHeroes.push(HeroAttributes({
-                heroType: i,
-                name: unitsNames[i + unitsAttackPoint.length],
-                imageURI: unitsImageURIs[i + unitsAttackPoint.length],
-                power: heroPower[i],
-                offensiveMultiplier: heroOffensiveMultiplier[i],
-                defensiveMultiplier: heroDefensiveMultiplier[i],
-                resourceProduction: heroResourceProduction[i]
-            }));
-        }
+        defaultHeroes = HeroAttributes({
+            heroType: 0,
+            name: unitsNames[unitsNames.length - 1],
+            imageURI: unitsImageURIs[unitsImageURIs.length - 1],
+            power: heroPower,
+            offensiveMultiplier: heroOffensiveMultiplier,
+            defensiveMultiplier: heroDefensiveMultiplier,
+            resourceProduction: heroResourceProduction
+        });
 
         // I increment _tokenIds here so that my first NFT has an ID of 1.
         _tokenIds.increment();
@@ -160,21 +153,26 @@ contract OmnichainWarsv0 is ERC1155 {
             string memory strSpeed = Strings.toString(charAttributes.speed);
             string memory strCarryingCapacity = Strings.toString(charAttributes.carryingCapacity);
 
+            bytes memory encoded1 = abi.encodePacked(
+                '{"name": "',
+                charAttributes.name,
+                ' -- NFT #: ',
+                Strings.toString(_tokenId),
+                '", "description": "", "image": "',
+                charAttributes.imageURI,
+                '", "attributes": [{ "trait_type": "Attack Point", "value": ', strAttackPoint, '}, ',
+                '{ "trait_type": "Defense against Infantry", "value": ', strDefenseInfantry, '},'
+            );
+
+            bytes memory encoded2 = abi.encodePacked(
+                '{ "trait_type": "Defense against Cavalry", "value": ', strDefenseCavalry, '},',
+                '{ "trait_type": "Speed", "value": ', strSpeed, '},',
+                '{ "trait_type": "Carrying Capacity", "value": ', strCarryingCapacity, '}',
+                ']}'
+            );
+
             string memory json = Base64.encode(
-                abi.encodePacked(
-                    '{"name": "',
-                    charAttributes.name,
-                    ' -- NFT #: ',
-                    Strings.toString(_tokenId),
-                    '", "description": "", "image": "',
-                    charAttributes.imageURI,
-                    '", "attributes": [{ "trait_type": "Attack Point", "value": ', strAttackPoint, '}, ',
-                    '{ "trait_type": "Defense against Infantry", "value": ', strDefenseInfantry, '},',
-                    '{ "trait_type": "Defense against Cavalry", "value": ', strDefenseCavalry, '},',
-                    '{ "trait_type": "Speed", "value": ', strSpeed, '},',
-                    '{ "trait_type": "Carrying Capacity", "value": ', strCarryingCapacity, '}',
-                    ']}'
-                )
+                abi.encodePacked(string(encoded1), string(encoded2))
             );
 
             string memory output = string(
@@ -190,20 +188,24 @@ contract OmnichainWarsv0 is ERC1155 {
         string memory strDefensiveMultiplier = Strings.toString(heroAttributes.defensiveMultiplier);
         string memory strResourceProduction = Strings.toString(heroAttributes.resourceProduction);
 
+        bytes memory encoded3 = abi.encodePacked(
+            '{"name": "',
+            heroAttributes.name,
+            ' -- NFT #: ',
+            Strings.toString(_tokenId),
+            '", "description": "", "image": "',
+            heroAttributes.imageURI,
+            '", "attributes": [{ "trait_type": "Power", "value": ', strPower, '}, ',
+            '{ "trait_type": "Offensive Multiplier", "value": ', strOffensiveMultiplier, '},'
+        );
+        bytes memory encoded4 = abi.encodePacked(
+            '{ "trait_type": "Defensive Multiplier", "value": ', strDefensiveMultiplier, '},',
+            '{ "trait_type": "Resource Production", "value": ', strResourceProduction, '}',
+            ']}'
+        );
+
         string memory json1 = Base64.encode(
-            abi.encodePacked(
-                '{"name": "',
-                heroAttributes.name,
-                ' -- NFT #: ',
-                Strings.toString(_tokenId),
-                '", "description": "", "image": "',
-                heroAttributes.imageURI,
-                '", "attributes": [{ "trait_type": "Power", "value": ', strPower, '}, ',
-                '{ "trait_type": "Offensive Multiplier", "value": ', strOffensiveMultiplier, '},',
-                '{ "trait_type": "Defensive Multiplier", "value": ', strDefensiveMultiplier, '},',
-                '{ "trait_type": "Resource Production", "value": ', strResourceProduction, '}',
-                ']}'
-            )
+            abi.encodePacked(string(encoded3), string(encoded4))
         );
 
         string memory output1 = string(
@@ -220,6 +222,8 @@ contract OmnichainWarsv0 is ERC1155 {
         if (isUnitOrHero(_attackerId) && isUnitOrHero(_defenderId)) {
             uint256 attackerPoints = _sumAttackPoints(_attackerId);
             uint256 defenderPoints = _sumDefenderPoints(_defenderId, attackerPoints);
+            console.log(attackerPoints);
+            console.log(defenderPoints);
             if (attackerPoints > defenderPoints) {
                 console.log("win");
             } else if (attackerPoints == defenderPoints) {
@@ -231,40 +235,11 @@ contract OmnichainWarsv0 is ERC1155 {
     }
 
     function mint() external {
-        // 10 Spearmen Minting Process
-        uint256 newItemId = _tokenIds.current();
-        _mint(msg.sender, newItemId, 10, "");
-        unitsHolderAttributes[newItemId] = UnitsAttributes({
-            unitType : SPEARMEN,
-            name : defaultUnits[SPEARMEN].name,
-            imageURI : defaultUnits[SPEARMEN].imageURI,
-            attackPoint : defaultUnits[SPEARMEN].attackPoint,
-            defenseInfantry : defaultUnits[SPEARMEN].defenseInfantry,
-            defenseCavalry : defaultUnits[SPEARMEN].defenseCavalry,
-            speed : defaultUnits[SPEARMEN].speed,
-            carryingCapacity : defaultUnits[SPEARMEN].carryingCapacity
-        });
-        _tokenIds.increment();
-        creators[msg.sender] = newItemId;
-        nftTypes[newItemId] = 1;
-        emit UnitsMinted(msg.sender, newItemId, SPEARMEN, 10, "");
-
-        // 4 Hussars Minting Process
-        newItemId = _tokenIds.current();
-        _mint(msg.sender, newItemId, 4, "");
-        unitsHolderAttributes[newItemId] = UnitsAttributes({
-            unitType : HUSSARS,
-            name : defaultUnits[HUSSARS].name,
-            imageURI : defaultUnits[HUSSARS].imageURI,
-            attackPoint : defaultUnits[HUSSARS].attackPoint,
-            defenseInfantry : defaultUnits[HUSSARS].defenseInfantry,
-            defenseCavalry : defaultUnits[HUSSARS].defenseCavalry,
-            speed : defaultUnits[HUSSARS].speed,
-            carryingCapacity : defaultUnits[HUSSARS].carryingCapacity
-        });
-        creators[msg.sender] = newItemId;
-        nftTypes[newItemId] = 1;
-        emit UnitsMinted(msg.sender, newItemId, HUSSARS, 4, "");
+        // 10 Spearmen & 4 Hussars Minting Process
+        _mintUnit(SPEARMEN, 10);
+        _mintUnit(HUSSARS, 4);
+        // 1 hero Minting Process
+        _mintHero();
     }
 
     function getAllTokens(address account) public view returns (uint256[] memory) {
@@ -304,7 +279,6 @@ contract OmnichainWarsv0 is ERC1155 {
 
     function _sumAttackPoints(uint _attackerId) internal view returns (uint256) {
         UnitsAttributes memory attacker = unitsHolderAttributes[_attackerId];
-        console.log(ERC1155.balanceOf(msg.sender, _attackerId) * attacker.attackPoint);
         return ERC1155.balanceOf(msg.sender, _attackerId) * attacker.attackPoint;
     }
 
@@ -325,5 +299,42 @@ contract OmnichainWarsv0 is ERC1155 {
             defenderSum += attackPointOfDefender * ERC1155.balanceOf(msg.sender, _defenderId) * defender.defenseCavalry / _sumAttackerPoints;
         }
         return defenderSum;
+    }
+
+    function _mintUnit(uint _unitType, uint _amount) internal {
+        uint newItemId = _tokenIds.current();
+        _mint(msg.sender, newItemId, _amount, "");
+        unitsHolderAttributes[newItemId] = UnitsAttributes({
+            unitType : _unitType,
+            name : defaultUnits[_unitType].name,
+            imageURI : defaultUnits[_unitType].imageURI,
+            attackPoint : defaultUnits[_unitType].attackPoint,
+            defenseInfantry : defaultUnits[_unitType].defenseInfantry,
+            defenseCavalry : defaultUnits[_unitType].defenseCavalry,
+            speed : defaultUnits[_unitType].speed,
+            carryingCapacity : defaultUnits[_unitType].carryingCapacity
+        });
+        _tokenIds.increment();
+        creators[msg.sender] = newItemId;
+        nftTypes[newItemId] = 1;
+        emit UnitsMinted(msg.sender, newItemId, _unitType, _amount, "");
+    }
+
+    function _mintHero() internal {
+        uint newItemId = _tokenIds.current();
+        _mint(msg.sender, newItemId, 1, "");
+        heroHolderAttributes[newItemId] = HeroAttributes({
+            heroType: HERO,
+            name: defaultHeroes.name,
+            imageURI: defaultHeroes.imageURI,
+            power: defaultHeroes.power,
+            offensiveMultiplier: defaultHeroes.offensiveMultiplier,
+            defensiveMultiplier: defaultHeroes.defensiveMultiplier,
+            resourceProduction: defaultHeroes.resourceProduction
+        });
+        _tokenIds.increment();
+        creators[msg.sender] = newItemId;
+        nftTypes[newItemId] = 2;
+        emit HeroMinted(msg.sender, newItemId, HERO, "");
     }
 }

@@ -14,10 +14,10 @@ async function main (): Promise<void> {
         [40, 15, 35, 100, 75, 45],
         [10, 15, 35, 30, 15, 15],
         [20, 40, 60, 50, 0, 80],
-        [100],
-        [0],
-        [0],
-        [0]
+        100,
+        0,
+        0,
+        0
     )
     await omnichainWar.deployed()
     console.log('OmnichainWarsv0 deployed to: ', omnichainWar.address)
