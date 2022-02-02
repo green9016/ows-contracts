@@ -66,7 +66,7 @@ contract OmnichainWarsv0 is ERC1155 {
         uint heroOffensiveMultiplier,
         uint heroDefensiveMultiplier,
         uint heroResourceProduction
-    ) ERC1155("") {
+    ) ERC1155("Omni Wars") {
         require(unitsNames.length == unitsImageURIs.length);
         require(unitsAttackPoint.length == unitsDefenseInfantry.length);
         require(unitsAttackPoint.length == unitsDefenseCavalry.length);
