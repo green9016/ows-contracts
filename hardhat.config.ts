@@ -7,6 +7,8 @@ import 'hardhat-contract-sizer'
 import '@typechain/hardhat'
 import 'hardhat-gas-reporter'
 import 'solidity-coverage'
+import './tasks/deployOmniWars'
+import './tasks/mintOmniWars'
 
 dotenv.config()
 
