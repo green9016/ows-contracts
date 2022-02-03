@@ -50,14 +50,25 @@ describe('OmnichainWarsv0', () => {
             expect(await omnichainWarsv0.balanceOf(signers[0].address, 1)).to.eq(10)
             expect(await omnichainWarsv0.balanceOf(signers[0].address, 2)).to.eq(4)
             expect(await omnichainWarsv0.balanceOf(signers[0].address, 3)).to.eq(1)
-
-            const tokenList = await omnichainWarsv0.getAllTokens(signers[0].address)
-            console.log(tokenList)
         })
 
-        it('Combat', async () => {
+        it('Combat (Win Case)', async () => {
             await omnichainWarsv0.connect(signers[0]).mint()
-            await omnichainWarsv0.connect(signers[0]).combat(1, 2)
+            await omnichainWarsv0.connect(signers[1]).mint()
+            expect(await omnichainWarsv0.balanceOf(signers[1].address, 4)).to.eq(10)
+            expect(await omnichainWarsv0.balanceOf(signers[1].address, 5)).to.eq(4)
+            expect(await omnichainWarsv0.balanceOf(signers[1].address, 6)).to.eq(1)
+            await omnichainWarsv0.connect(signers[0]).combat([1, 2], [4, 5])
+            expect(await omnichainWarsv0.balanceOf(signers[0].address, 1)).to.eq(2)
+            expect(await omnichainWarsv0.balanceOf(signers[0].address, 2)).to.eq(0)
+            expect(await omnichainWarsv0.balanceOf(signers[1].address, 4)).to.eq(0)
+            expect(await omnichainWarsv0.balanceOf(signers[1].address, 5)).to.eq(0)
+        })
+
+        it('Combat (Lose case)', async () => {
+            await omnichainWarsv0.connect(signers[0]).mint()
+            await omnichainWarsv0.connect(signers[1]).mint()
+            await omnichainWarsv0.connect(signers[0]).combat([1], [4, 5, 6])
         })
     })
 })

@@ -5,9 +5,11 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "./libraries/Base64.sol";
+import "./libraries/Math.sol";
 import "hardhat/console.sol";
 
 contract OmnichainWarsv0 is ERC1155 {
+    using Math for uint256;
 
     uint256 public constant SPEARMEN = 0;
     uint256 public constant SWORDSMEN = 1;
@@ -51,8 +53,14 @@ contract OmnichainWarsv0 is ERC1155 {
 
     mapping(uint256 => UnitsAttributes) public unitsHolderAttributes;
     mapping(uint256 => HeroAttributes) public heroHolderAttributes;
+    // TokenID => Token Count
+    mapping(uint256 => uint) public unitsCount;
+    // TokenID => Unit or Hero
     mapping(uint256 => uint) public nftTypes;
+    // Address => TokenID
     mapping(address => uint) public creators;
+    // TokenID => Address
+    mapping(uint256 => address) public tokenOwner;
 
     constructor(
         string[] memory unitsNames,
@@ -157,7 +165,7 @@ contract OmnichainWarsv0 is ERC1155 {
                 '{"name": "',
                 charAttributes.name,
                 ' -- NFT #: ',
-                Strings.toString(_tokenId),
+                Strings.toString(charAttributes.unitType),
                 '", "description": "", "image": "',
                 charAttributes.imageURI,
                 '", "attributes": [{ "trait_type": "Attack Point", "value": ', strAttackPoint, '}, ',
@@ -192,7 +200,7 @@ contract OmnichainWarsv0 is ERC1155 {
             '{"name": "',
             heroAttributes.name,
             ' -- NFT #: ',
-            Strings.toString(_tokenId),
+            Strings.toString(heroAttributes.heroType),
             '", "description": "", "image": "',
             heroAttributes.imageURI,
             '", "attributes": [{ "trait_type": "Power", "value": ', strPower, '}, ',
@@ -215,21 +223,41 @@ contract OmnichainWarsv0 is ERC1155 {
         return output1;
     }
 
-    function combat(uint256 _attackerId, uint256 _defenderId) external {
-        require(ERC1155.balanceOf(msg.sender, _attackerId) > 0, "");
-        require(nftTypes[_defenderId] > 0);
+    function combat(uint256[] memory _attackerIds, uint256[] memory _defenderIds) external {
+        for (uint i = 0; i < _attackerIds.length; i++) {
+            require(ERC1155.balanceOf(msg.sender, _attackerIds[i]) > 0, "");
+        }
+        for (uint i = 0; i < _defenderIds.length; i++) {
+            require(nftTypes[_defenderIds[i]] > 0, "");
+        }
 
-        if (isUnitOrHero(_attackerId) && isUnitOrHero(_defenderId)) {
-            uint256 attackerPoints = _sumAttackPoints(_attackerId);
-            uint256 defenderPoints = _sumDefenderPoints(_defenderId, attackerPoints);
-            console.log(attackerPoints);
-            console.log(defenderPoints);
-            if (attackerPoints > defenderPoints) {
-                console.log("win");
-            } else if (attackerPoints == defenderPoints) {
-                console.log("draw");
-            } else {
-                console.log("lose");
+        uint256 attackerPoints = _sumAttackPoints(_attackerIds);
+        uint256 defenderPoints = _sumDefenderPoints(_defenderIds, attackerPoints);
+        console.log(attackerPoints);
+        console.log(defenderPoints);
+
+        if (attackerPoints > defenderPoints) {
+            /// x = 100% · (looser points / winner points) ^ K => K = 1.5
+            uint losePoint = 100 * Math.sqrtu((100 * defenderPoints / attackerPoints) ** 3);
+            for (uint i = 0; i < _attackerIds.length; i++) {
+                uint balance = ERC1155.balanceOf(msg.sender, _attackerIds[i]);
+                _burn(msg.sender, _attackerIds[i], (balance - balance * losePoint / 100000));
+            }
+            for (uint i = 0; i < _defenderIds.length; i++) {
+                _burn(tokenOwner[_defenderIds[i]], _defenderIds[i], ERC1155.balanceOf(tokenOwner[_defenderIds[i]], _defenderIds[i]));
+            }
+        } else if (attackerPoints == defenderPoints) {
+            console.log("draw");
+        } else {
+            console.log("lose");
+            /// x = 100% · (looser points / winner points) ^ K => K = 1.5
+            uint losePoint = 100 * Math.sqrtu((100 * attackerPoints / defenderPoints) ** 3);
+            for (uint i = 0; i < _defenderIds.length; i++) {
+                uint balance = ERC1155.balanceOf(tokenOwner[_defenderIds[i]], _defenderIds[i]);
+                _burn(tokenOwner[_defenderIds[i]], _defenderIds[i], (balance - balance * losePoint / 100000));
+            }
+            for (uint i = 0; i < _attackerIds.length; i++) {
+                _burn(tokenOwner[_attackerIds[i]], _attackerIds[i], ERC1155.balanceOf(tokenOwner[_attackerIds[i]], _defenderIds[i]));
             }
         }
     }
@@ -277,27 +305,44 @@ contract OmnichainWarsv0 is ERC1155 {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
     }
 
-    function _sumAttackPoints(uint _attackerId) internal view returns (uint256) {
-        UnitsAttributes memory attacker = unitsHolderAttributes[_attackerId];
-        return ERC1155.balanceOf(msg.sender, _attackerId) * attacker.attackPoint;
+    /// @notice All attack points of your army get summed up:
+    /// @dev a = (number of infantry * infantry attack) + (number of cavalry * cavalry attack)
+    /// @param _attackerIds The number of rings from dendrochronological sample
+    /// @return sum of attack points
+    function _sumAttackPoints(uint[] memory _attackerIds) internal view returns (uint256) {
+        uint attackerPoint;
+        for (uint i = 0; i < _attackerIds.length; i ++) {
+            UnitsAttributes memory attacker = unitsHolderAttributes[_attackerIds[i]];
+            attackerPoint += unitsCount[_attackerIds[i]] * attacker.attackPoint;
+            /*if (attacker.unitType == SPEARMEN || attacker.unitType == SWORDSMEN) {
+
+            } else if (attacker.unitType == HUSSARS || attacker.unitType == HOLY_KNIGHTS) {
+                attackerPoint += ERC1155.balanceOf(msg.sender, _attackerIds[i]) * attacker.attackPoint;
+            }*/
+        }
+        return attackerPoint;
     }
 
-    function _sumDefenderPoints(uint _defenderId, uint _sumAttackerPoints) internal view returns (uint256) {
-        /// @notice This function calculates sum of defense points
-        /// @formula  itc = (number of infantry * infantry attack)/(a)
-        //            di = number of troops * defense against infantry
-        //            dc = number of troops * defense against cavalry
-        //            d = di*itc + dc*(1-itc)
-        /// @param _defenderId, _sumAttackerPoints
-        /// @return sum Of defense points
-        UnitsAttributes memory defender = unitsHolderAttributes[_defenderId];
+    /// @title This function calculates sum of defense points
+    /// @dev  itc = (number of infantry * infantry attack)/(a)
+    //            di = number of troops * defense against infantry
+    //            dc = number of troops * defense against cavalry
+    //            d = di*itc + dc*(1-itc)
+    /// @param _defenderIds, _sumAttackerPoints
+    /// @return sum of defense points
+    function _sumDefenderPoints(uint[] memory _defenderIds, uint _sumAttackerPoints) internal view returns (uint256) {
         uint defenderSum = 0;
-        uint attackPointOfDefender = ERC1155.balanceOf(msg.sender, _defenderId) * defender.attackPoint;
-        if (defender.unitType == SPEARMEN || defender.unitType == SWORDSMEN) {
-            defenderSum += attackPointOfDefender * ERC1155.balanceOf(msg.sender, _defenderId) * defender.defenseInfantry / _sumAttackerPoints;
-        } else if (defender.unitType == HUSSARS || defender.unitType == HOLY_KNIGHTS) {
-            defenderSum += attackPointOfDefender * ERC1155.balanceOf(msg.sender, _defenderId) * defender.defenseCavalry / _sumAttackerPoints;
+
+        for (uint i = 0; i < _defenderIds.length; i++) {
+            UnitsAttributes memory defender = unitsHolderAttributes[_defenderIds[i]];
+            uint attackPointOfDefender = unitsCount[_defenderIds[i]] * defender.attackPoint;
+            if (defender.unitType == SPEARMEN || defender.unitType == SWORDSMEN) {
+                defenderSum += attackPointOfDefender * unitsCount[_defenderIds[i]] * defender.defenseInfantry / _sumAttackerPoints;
+            } else if (defender.unitType == HUSSARS || defender.unitType == HOLY_KNIGHTS) {
+                defenderSum += attackPointOfDefender * unitsCount[_defenderIds[i]] * defender.defenseCavalry / _sumAttackerPoints;
+            }
         }
+
         return defenderSum;
     }
 
@@ -317,6 +362,8 @@ contract OmnichainWarsv0 is ERC1155 {
         _tokenIds.increment();
         creators[msg.sender] = newItemId;
         nftTypes[newItemId] = 1;
+        unitsCount[newItemId] = _amount;
+        tokenOwner[newItemId] = msg.sender;
         emit UnitsMinted(msg.sender, newItemId, _unitType, _amount, "");
     }
 
@@ -335,6 +382,8 @@ contract OmnichainWarsv0 is ERC1155 {
         _tokenIds.increment();
         creators[msg.sender] = newItemId;
         nftTypes[newItemId] = 2;
+        unitsCount[newItemId] = 1;
+        tokenOwner[newItemId] = msg.sender;
         emit HeroMinted(msg.sender, newItemId, HERO, "");
     }
 }

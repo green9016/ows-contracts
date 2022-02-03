@@ -1,6 +1,7 @@
 {
   "scripts": {
     "deploy": "npx hardhat run scripts/deploy.ts",
+    "clean": "npx hardhat clean",
     "compile": "npx hardhat compile",
     "verify": "npx hardhat run scripts/verify.ts",
     "size": "npx hardhat size-contracts",
