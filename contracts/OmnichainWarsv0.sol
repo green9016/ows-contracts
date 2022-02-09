@@ -11,12 +11,12 @@ import "hardhat/console.sol";
 contract OmnichainWarsv0 is ERC1155 {
     using Math for uint256;
 
-    uint256 public constant SPEARMEN = 0;
-    uint256 public constant SWORDSMEN = 1;
-    uint256 public constant HUSSARS = 2;
-    uint256 public constant HOLY_KNIGHTS = 3;
-    uint256 public constant RAMS = 4;
-    uint256 public constant BARONS = 5;
+    uint256 public constant LIGHT_INFANTRY = 0;
+    uint256 public constant HEAVY_INFANTRY = 1;
+    uint256 public constant LIGHT_CAVALRY = 2;
+    uint256 public constant HEAVY_CAVALRY = 3;
+    uint256 public constant SIEGE_MACHINE = 4;
+    uint256 public constant SPECIAL_UNIT = 5;
     uint256 public constant HERO = 0;
 
     struct UnitsAttributes {
@@ -223,6 +223,9 @@ contract OmnichainWarsv0 is ERC1155 {
         return output1;
     }
 
+    /// @notice This function will be called when the attacker attacks defenders. It's only capture attack mode
+    /// @dev x = 100% · (looser points / winner points)^K (if N < 1000, K = 1.5)
+    /// @param _attackerIds, _defenderIds
     function combat(uint256[] memory _attackerIds, uint256[] memory _defenderIds) external {
         for (uint i = 0; i < _attackerIds.length; i++) {
             require(ERC1155.balanceOf(msg.sender, _attackerIds[i]) > 0, "");
@@ -264,8 +267,8 @@ contract OmnichainWarsv0 is ERC1155 {
 
     function mint() external {
         // 10 Spearmen & 4 Hussars Minting Process
-        _mintUnit(SPEARMEN, 10);
-        _mintUnit(HUSSARS, 4);
+        _mintUnit(LIGHT_INFANTRY, 10);
+        _mintUnit(LIGHT_CAVALRY, 4);
         // 1 hero Minting Process
         _mintHero();
     }
@@ -305,18 +308,18 @@ contract OmnichainWarsv0 is ERC1155 {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
     }
 
-    /// @notice All attack points of your army get summed up:
+    /// @notice This function will get all attack points of your army get summed up
     /// @dev a = (number of infantry * infantry attack) + (number of cavalry * cavalry attack)
-    /// @param _attackerIds The number of rings from dendrochronological sample
+    /// @param _attackerIds Ids
     /// @return sum of attack points
     function _sumAttackPoints(uint[] memory _attackerIds) internal view returns (uint256) {
         uint attackerPoint;
         for (uint i = 0; i < _attackerIds.length; i ++) {
             UnitsAttributes memory attacker = unitsHolderAttributes[_attackerIds[i]];
             attackerPoint += unitsCount[_attackerIds[i]] * attacker.attackPoint;
-            /*if (attacker.unitType == SPEARMEN || attacker.unitType == SWORDSMEN) {
+            /*if (attacker.unitType == LIGHT_INFANTRY || attacker.unitType == HEAVY_INFANTRY) {
 
-            } else if (attacker.unitType == HUSSARS || attacker.unitType == HOLY_KNIGHTS) {
+            } else if (attacker.unitType == LIGHT_CAVALRY || attacker.unitType == HEAVY_CAVALRY) {
                 attackerPoint += ERC1155.balanceOf(msg.sender, _attackerIds[i]) * attacker.attackPoint;
             }*/
         }
@@ -336,9 +339,9 @@ contract OmnichainWarsv0 is ERC1155 {
         for (uint i = 0; i < _defenderIds.length; i++) {
             UnitsAttributes memory defender = unitsHolderAttributes[_defenderIds[i]];
             uint attackPointOfDefender = unitsCount[_defenderIds[i]] * defender.attackPoint;
-            if (defender.unitType == SPEARMEN || defender.unitType == SWORDSMEN) {
+            if (defender.unitType == LIGHT_INFANTRY || defender.unitType == HEAVY_INFANTRY) {
                 defenderSum += attackPointOfDefender * unitsCount[_defenderIds[i]] * defender.defenseInfantry / _sumAttackerPoints;
-            } else if (defender.unitType == HUSSARS || defender.unitType == HOLY_KNIGHTS) {
+            } else if (defender.unitType == LIGHT_CAVALRY || defender.unitType == HEAVY_CAVALRY) {
                 defenderSum += attackPointOfDefender * unitsCount[_defenderIds[i]] * defender.defenseCavalry / _sumAttackerPoints;
             }
         }
