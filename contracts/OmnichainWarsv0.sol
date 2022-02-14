@@ -260,7 +260,7 @@ contract OmnichainWarsv0 is ERC1155 {
                 _burn(tokenOwner[_defenderIds[i]], _defenderIds[i], (balance - balance * losePoint / 100000));
             }
             for (uint i = 0; i < _attackerIds.length; i++) {
-                _burn(tokenOwner[_attackerIds[i]], _attackerIds[i], ERC1155.balanceOf(tokenOwner[_attackerIds[i]], _defenderIds[i]));
+                _burn(tokenOwner[_attackerIds[i]], _attackerIds[i], ERC1155.balanceOf(tokenOwner[_attackerIds[i]], _attackerIds[i]));
             }
         }
     }
