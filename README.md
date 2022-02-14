@@ -4,7 +4,7 @@ Welcome to Omnichain Wars Contracts!
 
 Need a refresher on building gamefi? Check this [Fullstack Gaming NFT course](https://app.buildspace.so/projects/CO5cc2751b-e878-41c4-99fa-a614dc910ee9) out first! 
 
-Please follow the [instructions](./instructions.md) to start contributing to this repository.
+Please follow the [instructions2](./instructions2.md) to start contributing to this repository.
 
 Keep in mind a few general rules:
 * Use *GPL-3.0-only* license for all smart contracts, unless specified otherwise
