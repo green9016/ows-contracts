@@ -33,7 +33,7 @@ contract OmnichainNFT is ERC721, ERC721URIStorage, AccessControl, ILayerZeroRece
     // this function sends a NFT from your address to the same address on the destination.
     function sendNFT(
         uint16 _chainId,                            // send tokens to this chainId
-        bytes calldata _dstMultiChainNFTAddr,       // destination address of OmnichainNFT
+        bytes calldata _dstOmnichainNFTAddr,       // destination address of OmnichainNFT
         uint _id                                    // id of the NFT to send
     )
         public
@@ -57,7 +57,7 @@ contract OmnichainNFT is ERC721, ERC721URIStorage, AccessControl, ILayerZeroRece
         // send LayerZero message
         endpoint.send{value:msg.value}(
             _chainId,                       // destination chainId
-            _dstMultiChainNFTAddr,          // destination address of MultiChainNFT
+            _dstOmnichainNFTAddr,          // destination address of OmnichainNFT
             payload,                        // abi.encode()'ed bytes
             payable (msg.sender),                     // on destination send to the same address as the caller of this function
             address(0x0),                   // 'zroPaymentAddress' unused for this mock/example
@@ -66,7 +66,7 @@ contract OmnichainNFT is ERC721, ERC721URIStorage, AccessControl, ILayerZeroRece
     }
 
     // receive the bytes payload from the source chain via LayerZero
-    // _fromAddress is the source MultiChainToken address
+    // _fromAddress is the source OmnichainNFT address
     function lzReceive(uint16 _srcChainId, bytes memory _fromAddress, uint64 _nonce, bytes memory _payload) override external{
         require(msg.sender == address(endpoint)); // boilerplate! lzReceive must be called by the endpoint for security
 
