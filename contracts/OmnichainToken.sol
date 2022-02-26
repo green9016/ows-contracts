@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 //
 // sendTokens() function works like this:
 //  1. burn local tokens (logic in sendTokens)
-//  2. send a LayerZero message to the destination MultiChainToken address on another chain
+//  2. send a LayerZero message to the destination OmnichainToken address on another chain
 //  3. mint tokens on destination (logic in lzReceive)
 contract OmnichainToken is ERC20, ILayerZeroReceiver {
 
@@ -26,7 +26,7 @@ contract OmnichainToken is ERC20, ILayerZeroReceiver {
     // this function sends the tokens from your address to the same address on the destination.
     function sendTokens(
         uint16 _chainId,                            // send tokens to this chainId
-        bytes calldata _dstMultiChainTokenAddr,     // destination address of MultiChainToken
+        bytes calldata _dstOmnichainTokenAddr,     // destination address of OmnichainToken
         uint _qty                                   // how many tokens to send
     )
         public
@@ -48,7 +48,7 @@ contract OmnichainToken is ERC20, ILayerZeroReceiver {
         // send LayerZero message
         endpoint.send{value:msg.value}(
             _chainId,                       // destination chainId
-            _dstMultiChainTokenAddr,        // destination address of OmnichainToken
+            _dstOmnichainTokenAddr,        // destination address of OmnichainToken
             payload,                        // abi.encode()'ed bytes
             payable (msg.sender),                     // on destination send to the same address as the caller of this function
             address(0x0),                   // 'zroPaymentAddress' unused for this mock/example
