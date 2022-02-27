@@ -17,9 +17,9 @@ contract OmnichainNFT is ERC721, ERC721URIStorage, AccessControl, ILayerZeroRece
 
     constructor(string memory name_, string memory symbol_, address _layerZeroEndpoint) ERC721(name_, symbol_) {
         endpoint = ILayerZeroEndpoint(_layerZeroEndpoint);
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(DEFAULT_ADMIN_ROLE, address(this));
         _setupRole(MINTER_ROLE, address(endpoint));
+        _setupRole(MINTER_ROLE, msg.sender);
     }
 
     function safeMint(address to, string memory uri) public onlyRole(MINTER_ROLE) {
