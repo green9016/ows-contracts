@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
+
 pragma solidity ^0.8.4;
 
 // this interfaace should be implemented by any User Application contract

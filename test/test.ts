@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat'
 import chai from 'chai'
 import { solidity } from 'ethereum-waffle'
-import { OmnichainWarsv0 } from '../typechain'
+import { OmnichainWarsv0, LayerZeroEndpointMock } from '../typechain'
 import { BigNumber } from '@ethersproject/bignumber'
 const hre = require('hardhat')
 chai.use(solidity)
@@ -42,6 +42,14 @@ describe('OmnichainWarsv0', () => {
             0
         )) as OmnichainWarsv0
         await omnichainWarsv0.deployed()
+
+        const layerZeroEndpointMockFactory = await ethers.getContractFactory(
+            'LayerZeroEndpointMock',
+            signers[0]
+        )
+        const layerZeroEndpoint = (await layerZeroEndpointMockFactory.deploy()) as LayerZeroEndpointMock
+        await layerZeroEndpoint.deployed()
+        omnichainWarsv0.connect(signers[0]).setLayerZeroEndpoint(layerZeroEndpoint.address);
     })
 
     describe('External Free Minting Process', () => {
@@ -70,5 +78,24 @@ describe('OmnichainWarsv0', () => {
             await omnichainWarsv0.connect(signers[1]).mint()
             await omnichainWarsv0.connect(signers[0]).combat([1], [4, 5, 6])
         })
+
+        it('Cross Combat (Win Case)', async () => {
+            await omnichainWarsv0.connect(signers[0]).mint()
+            await omnichainWarsv0.connect(signers[1]).mint()
+            expect(await omnichainWarsv0.balanceOf(signers[1].address, 4)).to.eq(10)
+            expect(await omnichainWarsv0.balanceOf(signers[1].address, 5)).to.eq(4)
+            expect(await omnichainWarsv0.balanceOf(signers[1].address, 6)).to.eq(1)
+            await omnichainWarsv0.connect(signers[0]).combatCrossChain([1, 2], hre.network.config.chainId, omnichainWarsv0.address, [4, 5])
+            expect(await omnichainWarsv0.balanceOf(signers[0].address, 1)).to.eq(2)
+            expect(await omnichainWarsv0.balanceOf(signers[0].address, 2)).to.eq(0)
+            expect(await omnichainWarsv0.balanceOf(signers[1].address, 4)).to.eq(0)
+            expect(await omnichainWarsv0.balanceOf(signers[1].address, 5)).to.eq(0)
+        })
+
+        // it('Cross Combat (Lose case)', async () => {
+        //     await omnichainWarsv0.connect(signers[0]).mint()
+        //     await omnichainWarsv0.connect(signers[1]).mint()
+        //     await omnichainWarsv0.connect(signers[0]).combatCrossChain([1], [4, 5, 6])
+        // })
     })
 })
