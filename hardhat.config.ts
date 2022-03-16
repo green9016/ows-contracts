@@ -14,6 +14,7 @@ import './tasks/OmnichainToken/sendOmnichainToken'
 import './tasks/OmnichainNFT/deployOmnichainNFT'
 import './tasks/OmnichainNFT/mintOmnichainNFT'
 import './tasks/OmnichainNFT/sendOmnichainNFT'
+import './tasks/OmnichainNFT/tokenURIOmnichainNFT'
 
 dotenv.config()
 
