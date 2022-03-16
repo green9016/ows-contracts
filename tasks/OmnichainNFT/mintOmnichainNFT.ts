@@ -9,7 +9,7 @@ task('mintOmnichainNFT', 'mints a OmnichainNFT')
         // @ts-expect-error
         const OmnichainNFT = await hre.ethers.getContractFactory('OmnichainNFT')
         const omnichainNFT = await OmnichainNFT.attach(taskArgs.src)
-        console.log(`multiChainToken.address: ${omnichainNFT.address}`)
+        console.log(`omnichainNFT.address: ${omnichainNFT.address}`)
 
         // mint the token
         const result = await omnichainNFT.safeMint(taskArgs.acc, taskArgs.uri)
