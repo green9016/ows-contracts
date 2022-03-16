@@ -8,3 +8,6 @@ typechain
 cache
 artifacts
 .idea
+
+#production files
+metadata
