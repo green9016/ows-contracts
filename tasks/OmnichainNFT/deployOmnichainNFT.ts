@@ -1,5 +1,5 @@
 import { task } from 'hardhat/config'
-import { fujiEndpoint, rinkebyEndpoint } from '../../constants'
+import { fujiEndpoint, rinkebyEndpoint, mumbaiEndpoint } from '../../constants'
 
 task('deployOmnichainNFT', 'deploys an OmnichainNFT')
     .addParam('name', 'the string name of the NFT')
@@ -7,6 +7,6 @@ task('deployOmnichainNFT', 'deploys an OmnichainNFT')
     .setAction(async (taskArgs) => {
         // @ts-expect-error
         const OmnichainNFT = await hre.ethers.getContractFactory('OmnichainNFT')
-        const omnichainNFT = await OmnichainNFT.deploy(taskArgs.name, taskArgs.symbol, rinkebyEndpoint)
+        const omnichainNFT = await OmnichainNFT.deploy(taskArgs.name, taskArgs.symbol, mumbaiEndpoint)
         console.log(`omnichainNFT.address: ${omnichainNFT.address}`)
     })
