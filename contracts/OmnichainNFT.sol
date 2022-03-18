@@ -4,11 +4,12 @@ pragma solidity ^0.8.4;
 import "./interfaces/ILayerZeroReceiver.sol";
 import "./interfaces/ILayerZeroEndpoint.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-contract OmnichainNFT is ERC721, ERC721URIStorage, AccessControl, ILayerZeroReceiver {
+contract OmnichainNFT is ERC721, ERC721Enumerable, ERC721URIStorage, AccessControl, ILayerZeroReceiver {
     using Counters for Counters.Counter;
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -78,6 +79,12 @@ contract OmnichainNFT is ERC721, ERC721URIStorage, AccessControl, ILayerZeroRece
     }
 
     // The following functions are overrides required by Solidity.
+    function _beforeTokenTransfer(address from, address to, uint256 tokenId)
+        internal
+        override(ERC721, ERC721Enumerable)
+    {
+        super._beforeTokenTransfer(from, to, tokenId);
+    }
 
     function _burn(uint256 tokenId) internal override(ERC721, ERC721URIStorage) {
         super._burn(tokenId);
@@ -95,7 +102,7 @@ contract OmnichainNFT is ERC721, ERC721URIStorage, AccessControl, ILayerZeroRece
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721, AccessControl)
+        override(ERC721, ERC721Enumerable, AccessControl)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
