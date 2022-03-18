@@ -6,9 +6,11 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "./libraries/Base64.sol";
 import "./libraries/Math.sol";
+import "./interfaces/ILayerZeroEndpoint.sol";
+import "./interfaces/ILayerZeroReceiver.sol";
 import "hardhat/console.sol";
 
-contract OmnichainWarsv0 is ERC1155 {
+contract OmnichainWarsv0 is ERC1155, ILayerZeroReceiver {
     using Math for uint256;
 
     uint256 public constant LIGHT_INFANTRY = 0;
@@ -18,6 +20,9 @@ contract OmnichainWarsv0 is ERC1155 {
     uint256 public constant SIEGE_MACHINE = 4;
     uint256 public constant SPECIAL_UNIT = 5;
     uint256 public constant HERO = 0;
+
+    uint8 public constant CROSS_A2B = 1;
+    uint8 public constant CROSS_B2A = 2;
 
     struct UnitsAttributes {
         uint unitType;
@@ -50,6 +55,9 @@ contract OmnichainWarsv0 is ERC1155 {
 
     UnitsAttributes[] public defaultUnits;
     HeroAttributes public defaultHeroes;
+    
+    // LayerZero endpoint
+    ILayerZeroEndpoint public endpoint;
 
     mapping(uint256 => UnitsAttributes) public unitsHolderAttributes;
     mapping(uint256 => HeroAttributes) public heroHolderAttributes;
@@ -388,5 +396,157 @@ contract OmnichainWarsv0 is ERC1155 {
         unitsCount[newItemId] = 1;
         tokenOwner[newItemId] = msg.sender;
         emit HeroMinted(msg.sender, newItemId, HERO, "");
+    }
+
+    /// @notice combat cross-chain. attackers on chain A attack the defenders on chain B.
+    ///     1. on chain A sends total attack power and infantry-to-cavalry ratio to on chain B.
+    ///     2. on chain B calculates the total defense power based on that data and sends it back to on chain A
+    ///     3. on chain B applies losses (burns troops) in accordance to the combat formula (same combat).
+    ///     4. on chain A applies losses (burns troops) in accordance to the combat formula
+    function combatCrossChain(
+        uint256[] memory _attackerIds, 
+        uint16 _defenderChainId, 
+        bytes calldata _defenderContractAddress,
+        uint256[] memory _defenderIds
+    ) external {
+        require (address(endpoint) != address(0), "LayerZero endpoint should be set.");
+
+        for (uint i = 0; i < _attackerIds.length; i++) {
+            require(ERC1155.balanceOf(msg.sender, _attackerIds[i]) > 0, "");
+        }
+        // for (uint i = 0; i < _defenderIds.length; i++) {
+        //     require(nftTypes[_defenderIds[i]] > 0, "");
+        // }
+
+        uint256 attackerPoints = _sumAttackPoints(_attackerIds);
+
+        // send chain A to chain B
+        console.log("attack pts:", attackerPoints);
+        bytes memory payload = abi.encode(CROSS_A2B, attackerPoints, _attackerIds, _defenderIds);
+        console.log("payload");
+        uint messageFee = endpoint.estimateNativeFees(_defenderChainId, address(this), payload, false, bytes(""));
+        console.log("message fee:", messageFee);
+        endpoint.send {value: messageFee} (
+            _defenderChainId,
+            _defenderContractAddress,
+            payload,
+            payable(msg.sender),
+            address(0x0),
+            bytes("")
+        );
+        console.log("sent");
+    }
+
+    function updateAttacker(uint256 _attackerPoints, uint256 _defenderPoints, uint256[] memory _attackerIds) internal {
+        // this should be called on chain A
+        if (_attackerPoints > _defenderPoints) {
+            console.log("won");
+
+            uint losePoint = 100 * Math.sqrtu((100 * _defenderPoints / _attackerPoints) ** 3);
+
+            console.log("updateAttacker pts:", _attackerPoints, _defenderPoints, losePoint);
+            for (uint i = 0; i < _attackerIds.length; i++) {
+                uint balance = ERC1155.balanceOf(tokenOwner[_attackerIds[i]], _attackerIds[i]);
+                _burn(tokenOwner[_attackerIds[i]], _attackerIds[i], (balance - balance * losePoint / 100000));
+            }
+        } else {
+            console.log("lose");
+
+            for (uint i = 0; i < _attackerIds.length; i++) {
+                uint balance = ERC1155.balanceOf(tokenOwner[_attackerIds[i]], _attackerIds[i]);
+                _burn(tokenOwner[_attackerIds[i]], _attackerIds[i], balance);
+            }
+        }
+    }
+
+    function updateDefender(uint256 _attackerPoints, uint256 _defenderPoints, uint256[] memory _defenderIds) internal {
+        // this should be called on chain B
+        if (_attackerPoints > _defenderPoints) {
+            console.log("won");
+
+            console.log("updateDefender pts:", _attackerPoints, _defenderPoints);
+            for (uint i = 0; i < _defenderIds.length; i++) {
+                uint balance = ERC1155.balanceOf(tokenOwner[_defenderIds[i]], _defenderIds[i]);
+                _burn(tokenOwner[_defenderIds[i]], _defenderIds[i], balance);
+            }
+        } else {
+            console.log("lose");
+
+            uint losePoint = 100 * Math.sqrtu((100 * _attackerPoints / _defenderPoints) ** 3);
+
+            for (uint i = 0; i < _defenderIds.length; i++) {
+                uint balance = ERC1155.balanceOf(tokenOwner[_defenderIds[i]], _defenderIds[i]);
+                _burn(tokenOwner[_defenderIds[i]], _defenderIds[i], (balance - balance * losePoint / 100000));
+            }
+        }
+    }
+    
+    // set LayerZeroEndpoint
+    function setLayerZeroEndpoint(address _endpoint) external {
+        endpoint = ILayerZeroEndpoint(_endpoint);
+    }
+
+    // LayerZero receiver
+    function lzReceive(uint16 _srcChainId, bytes memory _srcAddress, uint64 _nonce, bytes memory _payload) override external {
+        require (msg.sender == address(endpoint), "Invalid LayerZero Reciver call.");
+
+        // // extract src address from bytes memory
+        // address srcAddress;
+        // assembly {
+        //     srcAddress := mload(add(_srcAddress, 20))
+        // }
+        // decode payload to get msgType
+        (uint16 msgType) = abi.decode(_payload, (uint16));
+        console.log("lzReceive", msgType);
+
+        require (msgType == CROSS_A2B || msgType == CROSS_B2A, "Invalid Omniwars Cross Message Type");
+        
+        if (msgType == CROSS_A2B) {
+            
+            console.log("lzReceive: A2B");
+            // decode payload body
+            (
+                uint16 _msgType, // already loaded
+                uint256 attackerPoints, 
+                uint256[] memory attackerIds,
+                uint256[] memory defenderIds
+            ) = abi.decode(_payload, (uint16, uint256, uint256[], uint256[]));
+
+            uint256 defenderPoints = _sumDefenderPoints(defenderIds, attackerPoints);
+
+            if (attackerPoints == defenderPoints) {
+                console.log("draw");
+            } else {
+                updateDefender(attackerPoints, defenderPoints, defenderIds);
+                
+                // send chain B to chain A
+                bytes memory payload = abi.encode(CROSS_B2A, attackerPoints, defenderPoints, attackerIds, defenderIds);
+                uint messageFee = endpoint.estimateNativeFees(_srcChainId, address(this), payload, false, bytes(""));
+                endpoint.send {value: messageFee} (
+                    _srcChainId,
+                    _srcAddress,
+                    payload,
+                    payable(msg.sender),
+                    address(0x0),
+                    bytes("")
+                );
+            }
+        }
+        else if (msgType == CROSS_B2A) {
+            console.log("lzReceive: B2A");
+            // decode payload body
+            (
+                uint16 _msgType, // already loaded
+                uint256 attackerPoints, 
+                uint256 defenderPoints, 
+                uint256[] memory attackerIds
+            ) = abi.decode(_payload, (uint16, uint256, uint256, uint256[]));
+
+            if (attackerPoints == defenderPoints) {
+                console.log("draw");
+            } else {
+                updateAttacker(attackerPoints, defenderPoints, attackerIds);
+            }
+        }
     }
 }
