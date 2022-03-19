@@ -23,6 +23,7 @@ const RINKEBY_API_KEY = process.env.RINKEBY_API_KEY || 'your rinkeby api key'
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || ''
 const FUJI_API_KEY = 'https://api.avax-test.network/ext/bc/C/rpc'
 const MUMBAI_API_KEY = process.env.MUMBAI_API_KEY || 'your mumbai api key'
+const BINANCE_TESTNET_API_KEY = 'https://data-seed-prebsc-1-s1.binance.org:8545'
 
 const config: HardhatUserConfig = {
     solidity: {
@@ -48,7 +49,15 @@ const config: HardhatUserConfig = {
         },
         mumbai: {
             url: MUMBAI_API_KEY,
-            accounts: PRIVATE_KEY !== '' ? [PRIVATE_KEY] : []
+            accounts: PRIVATE_KEY !== '' ? [PRIVATE_KEY] : [],
+            gas: 2100000,
+            gasPrice: 25000000001
+        },
+        bsct: {
+            url: BINANCE_TESTNET_API_KEY,
+            accounts: PRIVATE_KEY !== '' ? [PRIVATE_KEY] : [],
+            gas: 2100000,
+            gasPrice: 25000000001
         }
     },
     etherscan: {

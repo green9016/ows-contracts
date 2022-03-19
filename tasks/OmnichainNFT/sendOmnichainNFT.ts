@@ -25,7 +25,7 @@ task('sendOmnichainNFT', 'sends a OmnichainNFT to destination chain')
             taskArgs.dst,
             id,
             // @ts-expect-error
-            { value: hre.ethers.utils.parseEther('0.0035') }
+            { value: hre.ethers.utils.parseEther('0.1') }
         )
         console.log(`tx.hash: ${tx.hash}`)
     })
