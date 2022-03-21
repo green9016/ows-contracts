@@ -56,15 +56,17 @@ contract OmnichainNFT is ERC721, ERC721Enumerable, ERC721URIStorage, AccessContr
         bytes memory payload = abi.encode(msg.sender, uri);
 
         //calculate the cost of the cross-chain transfer
-        (uint nativeFee, uint zroFee) = endpoint.estimateFees(_chainId, address(this), payload, false, bytes(""));
+        // (uint nativeFee, uint zroFee) = endpoint.estimateFees(_chainId, address(this), payload, false, bytes(""));
+        //abi encode a higher gas limit to pass to tx parameters
+        bytes memory parameters = abi.encodePacked(uint16(1),uint256(350000));
         // send LayerZero message
-        endpoint.send{value:nativeFee}(
+        endpoint.send{value:msg.value}(
             _chainId,                       // destination chainId
             _dstOmnichainNFTAddr,          // destination address of OmnichainNFT
             payload,                        // abi.encode()'ed bytes
             payable (msg.sender),                     // on destination send to the same address as the caller of this function
             address(0x0),                   // 'zroPaymentAddress' unused for this mock/example
-            bytes("")                       // 'txParameters' unused for this mock/example
+            parameters                       // 'txParameters' unused for this mock/example
         );
     }
 
