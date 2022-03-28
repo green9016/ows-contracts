@@ -1,9 +1,8 @@
 import { task } from 'hardhat/config'
 
-task('mintOmnichainNFT', 'mints a OmnichainNFT')
+task('tokenURIOmnichainNFT', 'check a URI of OmnichainNFT')
     .addParam('src', 'the address of the local OmnichainNFT contract')
-    .addParam('acc', 'the address of the account that should get the NFT')
-    .addParam('uri', 'the uri of the new NFT')
+    .addParam('id', 'the id of the token that should be checked')
     .setAction(async (taskArgs) => {
         console.log(taskArgs)
         // @ts-expect-error
@@ -12,6 +11,6 @@ task('mintOmnichainNFT', 'mints a OmnichainNFT')
         console.log(`omnichainNFT.address: ${omnichainNFT.address}`)
 
         // mint the token
-        const result = await omnichainNFT.safeMint(taskArgs.acc, taskArgs.uri)
+        const result = await omnichainNFT.tokenURI(Number(taskArgs.id))
         console.log(result)
     })

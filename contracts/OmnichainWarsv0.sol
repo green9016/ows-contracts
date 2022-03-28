@@ -424,9 +424,9 @@ contract OmnichainWarsv0 is ERC1155, ILayerZeroReceiver {
         console.log("attack pts:", attackerPoints);
         bytes memory payload = abi.encode(CROSS_A2B, attackerPoints, _attackerIds, _defenderIds);
         console.log("payload");
-        uint messageFee = endpoint.estimateNativeFees(_defenderChainId, address(this), payload, false, bytes(""));
-        console.log("message fee:", messageFee);
-        endpoint.send {value: messageFee} (
+        (uint nativeFee, uint zroFee) = endpoint.estimateFees(_defenderChainId, address(this), payload, false, bytes(""));
+        console.log("message fee:", nativeFee);
+        endpoint.send {value: nativeFee} (
             _defenderChainId,
             _defenderContractAddress,
             payload,
@@ -521,8 +521,8 @@ contract OmnichainWarsv0 is ERC1155, ILayerZeroReceiver {
                 
                 // send chain B to chain A
                 bytes memory payload = abi.encode(CROSS_B2A, attackerPoints, defenderPoints, attackerIds, defenderIds);
-                uint messageFee = endpoint.estimateNativeFees(_srcChainId, address(this), payload, false, bytes(""));
-                endpoint.send {value: messageFee} (
+                (uint nativeFee, uint zroFee) = endpoint.estimateFees(_srcChainId, address(this), payload, false, bytes(""));
+                endpoint.send {value: nativeFee} (
                     _srcChainId,
                     _srcAddress,
                     payload,

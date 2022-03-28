@@ -4,11 +4,12 @@ pragma solidity ^0.8.4;
 import "./interfaces/ILayerZeroReceiver.sol";
 import "./interfaces/ILayerZeroEndpoint.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-contract OmnichainNFT is ERC721, ERC721URIStorage, AccessControl, ILayerZeroReceiver {
+contract OmnichainNFT is ERC721, ERC721Enumerable, ERC721URIStorage, AccessControl, ILayerZeroReceiver {
     using Counters for Counters.Counter;
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -54,6 +55,10 @@ contract OmnichainNFT is ERC721, ERC721URIStorage, AccessControl, ILayerZeroRece
         // abi.encode() the payload with the values to send
         bytes memory payload = abi.encode(msg.sender, uri);
 
+        //calculate the cost of the cross-chain transfer
+        // (uint nativeFee, uint zroFee) = endpoint.estimateFees(_chainId, address(this), payload, false, bytes(""));
+        //abi encode a higher gas limit to pass to tx parameters
+        bytes memory parameters = abi.encodePacked(uint16(1),uint256(350000));
         // send LayerZero message
         endpoint.send{value:msg.value}(
             _chainId,                       // destination chainId
@@ -61,7 +66,7 @@ contract OmnichainNFT is ERC721, ERC721URIStorage, AccessControl, ILayerZeroRece
             payload,                        // abi.encode()'ed bytes
             payable (msg.sender),                     // on destination send to the same address as the caller of this function
             address(0x0),                   // 'zroPaymentAddress' unused for this mock/example
-            bytes("")                       // 'txParameters' unused for this mock/example
+            parameters                       // 'txParameters' unused for this mock/example
         );
     }
 
@@ -78,6 +83,12 @@ contract OmnichainNFT is ERC721, ERC721URIStorage, AccessControl, ILayerZeroRece
     }
 
     // The following functions are overrides required by Solidity.
+    function _beforeTokenTransfer(address from, address to, uint256 tokenId)
+        internal
+        override(ERC721, ERC721Enumerable)
+    {
+        super._beforeTokenTransfer(from, to, tokenId);
+    }
 
     function _burn(uint256 tokenId) internal override(ERC721, ERC721URIStorage) {
         super._burn(tokenId);
@@ -95,7 +106,7 @@ contract OmnichainNFT is ERC721, ERC721URIStorage, AccessControl, ILayerZeroRece
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721, AccessControl)
+        override(ERC721, ERC721Enumerable, AccessControl)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
