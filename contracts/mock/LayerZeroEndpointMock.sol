@@ -8,7 +8,7 @@ import "../interfaces/ILayerZeroEndpoint.sol";
 
 // MOCK
 // heavily mocked LayerZero endpoint to facilitate same chain testing of two UserApplications
-abstract contract LayerZeroEndpointMock is ILayerZeroEndpoint {
+contract LayerZeroEndpointMock is ILayerZeroEndpoint {
 
     // inboundNonce = [srcChainId][srcAddress].
     mapping(uint16 => mapping(bytes => uint64)) public inboundNonce;
@@ -145,7 +145,7 @@ abstract contract LayerZeroEndpointMock is ILayerZeroEndpoint {
         return false;
     }
 
-    function retryPayload(uint16 _srcChainId, bytes calldata _srcAddress, address _dstAddress) external {
+    function retryPayload(uint16 _srcChainId, bytes calldata _srcAddress, address _dstAddress, bytes calldata _payload) external override {
         // mocked, ignore. will never happen
     }
 
